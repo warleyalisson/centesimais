@@ -6,6 +6,7 @@ from datetime import datetime
 import pandas as pd
 from fpdf import FPDF
 import io
+import altair as alt
 
 # -------------------- BANCO DE DADOS --------------------
 conn = sqlite3.connect('banco.db', check_same_thread=False)
@@ -25,14 +26,9 @@ cursor.execute('''
 CREATE TABLE IF NOT EXISTS analises (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     usuario_id INTEGER,
+    tipo_analise TEXT,
     nome_amostra TEXT,
-    umidade REAL,
-    cinzas REAL,
-    proteinas REAL,
-    lipidios REAL,
-    fibras REAL,
-    carboidratos REAL,
-    vet REAL,
+    resultado REAL,
     data TEXT,
     FOREIGN KEY(usuario_id) REFERENCES usuarios(id)
 )
@@ -63,7 +59,7 @@ def autenticar(email, senha):
         return {'id': dados[0], 'nome': dados[1], 'tipo': dados[3]}
     return None
 
-# -------------------- TELA DE CADASTRO --------------------
+# -------------------- TELA DE CADASTRO E LOGIN --------------------
 def tela_cadastro():
     st.subheader("Cadastro de Usuário")
     nome = st.text_input("Nome completo")
@@ -75,7 +71,6 @@ def tela_cadastro():
         else:
             st.error("Email já cadastrado.")
 
-# -------------------- TELA DE LOGIN --------------------
 def tela_login():
     st.subheader("Login")
     email = st.text_input("Email")
@@ -84,91 +79,112 @@ def tela_login():
         user = autenticar(email, senha)
         if user:
             st.session_state['user'] = user
+            st.session_state['logged_in'] = True
         else:
             st.error("Email ou senha incorretos.")
 
-# -------------------- ANÁLISE CENTESIMAL --------------------
-def calcular_e_salvar(usuario_id, nome_amostra, valores):
-    peso_seco = valores['peso_cadinho_amostra_seca'] - valores['peso_cadinho_seco']
-    umidade = ((valores['peso_amostra_umida'] - peso_seco) / valores['peso_amostra_umida']) * 100
-    cinzas = ((valores['peso_cadinho_cinzas'] - valores['peso_cadinho_seco']) / valores['peso_amostra_umida']) * 100
-    proteinas = valores['nitrogenio'] * 6.25
-    lipidios = (valores['peso_extrato_eterio'] / valores['peso_amostra_umida']) * 100
-    fibras = (valores['peso_residuo_fibra'] / valores['peso_amostra_umida']) * 100
-    carboidratos = 100 - (umidade + cinzas + proteinas + lipidios + fibras)
-    vet = proteinas*4 + lipidios*9 + carboidratos*4
+# -------------------- ANÁLISES INDIVIDUAIS --------------------
+def realizar_analise(usuario_id):
+    st.header("Nova Análise")
+    tipo = st.selectbox("Escolha a análise", ["Proteínas", "Carboidratos", "Lipídios", "Umidade", "Cinzas", "Fibras"])
+    nome_amostra = st.text_input("Nome da amostra")
+    resultado = None
 
-    data = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    cursor.execute("""
-        INSERT INTO analises (usuario_id, nome_amostra, umidade, cinzas, proteinas, lipidios,
-                              fibras, carboidratos, vet, data)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    """, (usuario_id, nome_amostra, umidade, cinzas, proteinas, lipidios, fibras, carboidratos, vet, data))
-    conn.commit()
-    return umidade, cinzas, proteinas, lipidios, fibras, carboidratos, vet
+    if tipo == "Proteínas":
+        n = st.number_input("Nitrogênio (g)", step=0.01)
+        if st.button("Calcular Proteínas"):
+            resultado = n * 6.25
+    elif tipo == "Carboidratos":
+        um = st.number_input("Umidade (%)", step=0.01)
+        ci = st.number_input("Cinzas (%)", step=0.01)
+        pr = st.number_input("Proteínas (%)", step=0.01)
+        li = st.number_input("Lipídios (%)", step=0.01)
+        fb = st.number_input("Fibras (%)", step=0.01)
+        if st.button("Calcular Carboidratos"):
+            resultado = 100 - (um + ci + pr + li + fb)
+    elif tipo == "Lipídios":
+        peso_extrato = st.number_input("Peso do extrato etéreo (g)", step=0.01)
+        peso_amostra = st.number_input("Peso da amostra (g)", step=0.01)
+        if st.button("Calcular Lipídios"):
+            resultado = (peso_extrato / peso_amostra) * 100
 
-def painel_usuario(usuario):
-    st.title(f"Bem-vindo, {usuario['nome']}")
-    st.header("Nova Análise Centesimal")
+    if resultado is not None:
+        st.success(f"Resultado: {resultado:.2f} %")
+        data = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        cursor.execute("""
+            INSERT INTO analises (usuario_id, tipo_analise, nome_amostra, resultado, data)
+            VALUES (?, ?, ?, ?, ?)
+        """, (usuario_id, tipo, nome_amostra, resultado, data))
+        conn.commit()
 
-    with st.form("form_analise"):
-        nome_amostra = st.text_input("Nome da amostra")
-        valores = {
-            'peso_amostra_umida': st.number_input("Peso da amostra úmida (g)", step=0.01),
-            'peso_cadinho_seco': st.number_input("Peso do cadinho seco (g)", step=0.01),
-            'peso_cadinho_amostra_seca': st.number_input("Peso do cadinho + amostra seca (g)", step=0.01),
-            'peso_cadinho_cinzas': st.number_input("Peso do cadinho com cinzas (g)", step=0.01),
-            'nitrogenio': st.number_input("Nitrogênio determinado (g)", step=0.01),
-            'peso_extrato_eterio': st.number_input("Peso do extrato etéreo (g)", step=0.01),
-            'peso_residuo_fibra': st.number_input("Peso do resíduo de fibra (g)", step=0.01)
-        }
-        submitted = st.form_submit_button("Calcular e Salvar")
-
-        if submitted:
-            res = calcular_e_salvar(usuario['id'], nome_amostra, valores)
-            st.success(f"Análise registrada com sucesso! VET: {res[-1]:.2f} kcal/100g")
-
-    st.header("Minhas análises")
+# -------------------- VISUALIZAÇÃO, FILTROS E EXPORTAÇÃO --------------------
+def minhas_analises(usuario):
+    st.subheader("Minhas Análises")
     df = pd.read_sql_query(f"SELECT * FROM analises WHERE usuario_id = {usuario['id']} ORDER BY data DESC", conn)
+    if df.empty:
+        st.info("Nenhuma análise encontrada.")
+        return
+    filtro_tipo = st.selectbox("Filtrar por tipo de análise", ["Todos"] + sorted(df['tipo_analise'].unique().tolist()))
+    if filtro_tipo != "Todos":
+        df = df[df['tipo_analise'] == filtro_tipo]
     st.dataframe(df)
+    if not df.empty:
+        chart = alt.Chart(df).mark_bar().encode(
+            x='nome_amostra',
+            y='resultado',
+            color='tipo_analise'
+        ).properties(width=700)
+        st.altair_chart(chart)
+        if st.button("Exportar minhas análises em PDF"):
+            pdf = FPDF()
+            pdf.add_page()
+            pdf.set_font("Arial", size=12)
+            for i, row in df.iterrows():
+                for col in df.columns:
+                    pdf.cell(200, 10, txt=f"{col}: {row[col]}", ln=True)
+                pdf.ln(5)
+            buffer = io.BytesIO()
+            pdf.output(buffer)
+            st.download_button("Download PDF", buffer.getvalue(), file_name="minhas_analises.pdf")
 
 # -------------------- PAINEL ADMINISTRADOR --------------------
 def painel_admin():
     st.title("Painel do Administrador")
-    st.subheader("Todas as Análises")
     df = pd.read_sql_query('''
         SELECT u.nome as usuario, a.* FROM analises a
         JOIN usuarios u ON a.usuario_id = u.id
         ORDER BY a.data DESC
     ''', conn)
-
-    filtro_usuario = st.selectbox("Filtrar por usuário (opcional)", ["Todos"] + sorted(df['usuario'].unique().tolist()))
-    if filtro_usuario != "Todos":
-        df = df[df['usuario'] == filtro_usuario]
-
+    if df.empty:
+        st.info("Nenhuma análise cadastrada ainda.")
+        return
+    usuario_filtro = st.selectbox("Filtrar por usuário", ["Todos"] + sorted(df['usuario'].unique().tolist()))
+    tipo_filtro = st.selectbox("Filtrar por tipo de análise", ["Todos"] + sorted(df['tipo_analise'].unique().tolist()))
+    if usuario_filtro != "Todos":
+        df = df[df['usuario'] == usuario_filtro]
+    if tipo_filtro != "Todos":
+        df = df[df['tipo_analise'] == tipo_filtro]
     st.dataframe(df)
-
-    col1, col2 = st.columns(2)
-    with col1:
-        if st.button("Exportar para Excel"):
-            buffer = io.BytesIO()
-            df.to_excel(buffer, index=False)
-            st.download_button("Download Excel", buffer.getvalue(), file_name="analises.xlsx")
-
-    with col2:
-        if st.button("Gerar PDF"):
+    if not df.empty:
+        chart = alt.Chart(df).mark_bar().encode(
+            x='usuario',
+            y='resultado',
+            color='tipo_analise'
+        ).properties(width=700)
+        st.altair_chart(chart)
+        if st.button("Exportar todas análises em PDF"):
             pdf = FPDF()
             pdf.add_page()
-            pdf.set_font("Arial", size=10)
+            pdf.set_font("Arial", size=12)
             for i, row in df.iterrows():
                 for col in df.columns:
-                    pdf.cell(190, 10, txt=f"{col}: {row[col]}", ln=1)
-                pdf.cell(190, 5, txt="-"*90, ln=1)
+                    pdf.cell(200, 10, txt=f"{col}: {row[col]}", ln=True)
+                pdf.ln(5)
             buffer = io.BytesIO()
             pdf.output(buffer)
-            st.download_button("Download PDF", buffer.getvalue(), file_name="analises.pdf")
+            st.download_button("Download PDF", buffer.getvalue(), file_name="todas_analises.pdf")
 
-# -------------------- APP STREAMLIT --------------------
+# -------------------- APP --------------------
 st.set_page_config(page_title="Análise Centesimal", layout="centered")
 
 if 'user' not in st.session_state:
@@ -179,7 +195,15 @@ if 'user' not in st.session_state:
         tela_cadastro()
 else:
     user = st.session_state['user']
+    st.sidebar.title(f"Olá, {user['nome']}")
+    if st.sidebar.button("Logout"):
+        st.session_state.clear()
+        st.experimental_rerun()
     if user['tipo'] == 'admin':
         painel_admin()
     else:
-        painel_usuario(user)
+        menu = st.sidebar.radio("Menu", ["Nova Análise", "Minhas Análises"])
+        if menu == "Nova Análise":
+            realizar_analise(user['id'])
+        elif menu == "Minhas Análises":
+            minhas_analises(user)
