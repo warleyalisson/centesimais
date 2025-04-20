@@ -1,4 +1,4 @@
-# app.py - Sistema Completo de Análise Centesimal com Login, Cálculo, Estatísticas e Exportação
+# app.py - Bloco 1 de N: Banco, Autenticação e Sessão Inicial
 
 import streamlit as st
 import sqlite3
@@ -26,13 +26,23 @@ CREATE TABLE IF NOT EXISTS analises (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     usuario_id INTEGER,
     nome_amostra TEXT,
-    umidade REAL,
-    cinzas REAL,
-    proteinas REAL,
-    lipidios REAL,
-    fibras REAL,
-    carboidratos REAL,
-    vet REAL,
+    parametro TEXT,
+    valor1 REAL,
+    valor2 REAL,
+    valor3 REAL,
+    media REAL,
+    desvio_padrao REAL,
+    coef_var REAL,
+    data TEXT,
+    FOREIGN KEY(usuario_id) REFERENCES usuarios(id)
+)''')
+
+cursor.execute('''
+CREATE TABLE IF NOT EXISTS anotacoes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    usuario_id INTEGER,
+    titulo TEXT,
+    conteudo TEXT,
     data TEXT,
     FOREIGN KEY(usuario_id) REFERENCES usuarios(id)
 )''')
@@ -86,152 +96,211 @@ def tela_cadastro():
         else:
             st.error("Email já cadastrado.")
 
-# -------------------- NOVA ANÁLISE --------------------
-def nova_analise(usuario):
-    st.subheader("Nova Análise Centesimal")
-    nome_amostra = st.text_input("Nome da Amostra")
-
-    col1, col2 = st.columns(2)
+# -------------------- MENU PRINCIPAL --------------------
+def menu_inicial():
+    st.title("Análises centesimais")
+    st.image("/mnt/data/532de271-3a2a-4ddf-a4cb-2ea3b77fadfc.png", use_column_width=True)
+    col1, col2, col3 = st.columns(3)
     with col1:
-        peso_umido = st.number_input("Peso da Amostra Úmida (g)", step=0.01)
-        peso_seco = st.number_input("Peso Após Secagem (g)", step=0.01)
-        peso_cinzas = st.number_input("Peso das Cinzas (g)", step=0.01)
+        if st.button("🔬 Análises"):
+            st.session_state['pagina'] = 'analises'
     with col2:
-        nitrogenio = st.number_input("Nitrogênio Determinado (g)", step=0.01)
-        extrato_eterio = st.number_input("Peso do Extrato Etéreo (g)", step=0.01)
-        peso_fibra = st.number_input("Peso do Resíduo de Fibra (g)", step=0.01)
+        if st.button("📝 Anotações"):
+            st.session_state['pagina'] = 'anotacoes'
+    with col3:
+        if st.button("📊 Relatórios"):
+            st.session_state['pagina'] = 'relatorios'
 
-    if st.button("Calcular e Salvar Análise"):
-        umidade = ((peso_umido - peso_seco) / peso_umido) * 100
-        cinzas = (peso_cinzas / peso_umido) * 100
-        proteinas = nitrogenio * 6.25
-        lipidios = (extrato_eterio / peso_umido) * 100
-        fibras = (peso_fibra / peso_umido) * 100
-        carboidratos = 100 - (umidade + cinzas + proteinas + lipidios + fibras)
-        vet = proteinas * 4 + lipidios * 9 + carboidratos * 4
-
-        data = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        cursor.execute("""
-            INSERT INTO analises (
-                usuario_id, nome_amostra, umidade, cinzas, proteinas,
-                lipidios, fibras, carboidratos, vet, data
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (usuario['id'], nome_amostra, umidade, cinzas, proteinas,
-              lipidios, fibras, carboidratos, vet, data))
-        conn.commit()
-        st.success(f"Análise salva com sucesso! VET: {vet:.2f} kcal/100g")
-
-# -------------------- VISUALIZAÇÃO E EDIÇÃO --------------------
-def minhas_analises(usuario):
-    st.subheader("Minhas Análises Cadastradas")
-    df = pd.read_sql_query(
-        f"SELECT * FROM analises WHERE usuario_id = {usuario['id']} ORDER BY data DESC",
-        conn
-    )
-
-    if df.empty:
-        st.info("Nenhuma análise registrada.")
-        return
-
-    st.dataframe(df)
-
-    for _, row in df.iterrows():
-        with st.expander(f"{row['nome_amostra']} - {row['data']}"):
-            novo_nome = st.text_input("Nome da Amostra", value=row['nome_amostra'], key=f"nome{row['id']}")
-            novo_umidade = st.number_input("Umidade (%)", value=row['umidade'], key=f"um{row['id']}")
-            novo_cinzas = st.number_input("Cinzas (%)", value=row['cinzas'], key=f"cin{row['id']}")
-            novo_proteinas = st.number_input("Proteínas (%)", value=row['proteinas'], key=f"prot{row['id']}")
-            novo_lipidios = st.number_input("Lipídios (%)", value=row['lipidios'], key=f"lip{row['id']}")
-            novo_fibras = st.number_input("Fibras (%)", value=row['fibras'], key=f"fib{row['id']}")
-            novo_carboidratos = 100 - (novo_umidade + novo_cinzas + novo_proteinas + novo_lipidios + novo_fibras)
-            novo_vet = novo_proteinas * 4 + novo_lipidios * 9 + novo_carboidratos * 4
-
-            col1, col2 = st.columns(2)
-            with col1:
-                if st.button("Salvar Alterações", key=f"save{row['id']}"):
-                    cursor.execute("""
-                        UPDATE analises
-                        SET nome_amostra=?, umidade=?, cinzas=?, proteinas=?, lipidios=?, fibras=?, carboidratos=?, vet=?
-                        WHERE id=?
-                    """, (
-                        novo_nome, novo_umidade, novo_cinzas, novo_proteinas,
-                        novo_lipidios, novo_fibras, novo_carboidratos, novo_vet, row['id']
-                    ))
-                    conn.commit()
-                    st.success("Alterações salvas com sucesso!")
-                    st.experimental_rerun()
-            with col2:
-                if st.button("Excluir Análise", key=f"del{row['id']}"):
-                    cursor.execute("DELETE FROM analises WHERE id=?", (row['id'],))
-                    conn.commit()
-                    st.warning("Análise excluída!")
-                    st.experimental_rerun()
-
-# -------------------- ESTATÍSTICA --------------------
-def validacao_estatistica(usuario):
-    st.subheader("Validação Estatística dos Meus Resultados")
-    df = pd.read_sql_query(f"SELECT * FROM analises WHERE usuario_id = {usuario['id']}", conn)
-    if df.empty:
-        st.info("Nenhuma análise disponível para análise estatística.")
-        return
-    st.markdown("### Estatísticas Descritivas")
-    colunas = ['umidade', 'cinzas', 'proteinas', 'lipidios', 'fibras', 'carboidratos', 'vet']
-    resumo = df[colunas].agg(['mean', 'std', 'min', 'max']).transpose()
-    resumo.columns = ['Média', 'Desvio Padrão', 'Mínimo', 'Máximo']
-    resumo = resumo.round(2)
-    st.dataframe(resumo)
-
-# -------------------- EXPORTAÇÃO --------------------
-def exportar_analises(usuario):
-    st.subheader("Exportação dos Meus Resultados")
-    df = pd.read_sql_query(f"SELECT * FROM analises WHERE usuario_id = {usuario['id']} ORDER BY data DESC", conn)
-    if df.empty:
-        st.info("Nenhuma análise disponível para exportação.")
-        return
-    col1, col2 = st.columns(2)
-    with col1:
-        st.markdown("#### Exportar para Excel")
-        buffer_xlsx = io.BytesIO()
-        df.to_excel(buffer_xlsx, index=False, sheet_name='Analises')
-        st.download_button("📊 Baixar Excel", buffer_xlsx.getvalue(), file_name="analises.xlsx")
-    with col2:
-        st.markdown("#### Exportar para PDF")
-        pdf = FPDF()
-        pdf.add_page()
-        pdf.set_font("Arial", size=10)
-        for _, row in df.iterrows():
-            pdf.cell(200, 10, txt=f"{row['nome_amostra']} - {row['data']}", ln=True)
-            pdf.cell(200, 10, txt=f"U:{row['umidade']} C:{row['cinzas']} P:{row['proteinas']} L:{row['lipidios']} F:{row['fibras']} CHO:{row['carboidratos']} VET:{row['vet']}", ln=True)
-            pdf.ln(3)
-        buffer_pdf = io.BytesIO()
-        pdf.output(buffer_pdf)
-        st.download_button("📄 Baixar PDF", buffer_pdf.getvalue(), file_name="relatorio.pdf")
-
-# -------------------- MENU --------------------
-def menu_principal():
-    user = st.session_state['user']
-    st.sidebar.title(f"Olá, {user['nome']}")
-    opcoes = ["Nova Análise", "Minhas Análises", "Validação Estatística", "Exportar Resultados"]
-    escolha = st.sidebar.radio("Menu", opcoes)
-    if st.sidebar.button("Logout"):
-        del st.session_state['user']
-        st.rerun()
-    if escolha == "Nova Análise":
-        nova_analise(user)
-    elif escolha == "Minhas Análises":
-        minhas_analises(user)
-    elif escolha == "Validação Estatística":
-        validacao_estatistica(user)
-    elif escolha == "Exportar Resultados":
-        exportar_analises(user)
-
-# -------------------- EXECUÇÃO --------------------
+# -------------------- EXECUÇÃO PRINCIPAL --------------------
 st.set_page_config("Análise Centesimal", layout="centered")
+
 if 'user' not in st.session_state:
     menu = st.sidebar.radio("Acesso", ["Login", "Cadastro"])
     if menu == "Login":
         tela_login()
     else:
         tela_cadastro()
-else:
-    menu_principal()
+elif 'pagina' not in st.session_state:
+    menu_inicial()
+# app.py - Bloco 2 de N: Nova Análise em Triplicata + Visualização de Resultados
+
+# -------------------- NOVA ANÁLISE EM TRIPLICATA --------------------
+def nova_analise(usuario):
+    st.subheader("Cadastrar Nova Análise")
+    nome_amostra = st.text_input("Nome da Amostra")
+    parametro = st.selectbox("Parâmetro analisado", ["Umidade", "Cinzas", "Proteínas", "Lipídios", "Fibras"])
+
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        valor1 = st.number_input("Valor 1 (%)", step=0.01, format="%.2f")
+    with col2:
+        valor2 = st.number_input("Valor 2 (%)", step=0.01, format="%.2f")
+    with col3:
+        valor3 = st.number_input("Valor 3 (%)", step=0.01, format="%.2f")
+
+    if st.button("Salvar Análise"):
+        valores = [valor1, valor2, valor3]
+        media = round(sum(valores) / 3, 2)
+        desvio = round(pd.Series(valores).std(ddof=1), 2)
+        cv = round((desvio / media) * 100 if media != 0 else 0, 2)
+
+        data = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        cursor.execute("""
+            INSERT INTO analises (
+                usuario_id, nome_amostra, parametro, valor1, valor2, valor3,
+                media, desvio_padrao, coef_var, data
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            usuario['id'], nome_amostra, parametro,
+            valor1, valor2, valor3, media, desvio, cv, data
+        ))
+        conn.commit()
+        st.success(f"Análise de {parametro} registrada com sucesso. Média: {media}%, DP: {desvio}, CV: {cv}%")
+
+# -------------------- VISUALIZAR ANÁLISES FINALIZADAS --------------------
+def analises_finalizadas(usuario):
+    st.subheader("Análises Finalizadas")
+    df = pd.read_sql_query(
+        f"SELECT * FROM analises WHERE usuario_id = {usuario['id']} ORDER BY data DESC",
+        conn
+    )
+    if df.empty:
+        st.info("Nenhuma análise cadastrada.")
+        return
+
+    filtro_param = st.selectbox("Filtrar por parâmetro", ["Todos"] + sorted(df['parametro'].unique()))
+    if filtro_param != "Todos":
+        df = df[df['parametro'] == filtro_param]
+
+    st.dataframe(df[['nome_amostra', 'parametro', 'valor1', 'valor2', 'valor3', 'media', 'desvio_padrao', 'coef_var', 'data']])
+
+# -------------------- CONTROLE DE FLUXO PARA MÓDULO ANÁLISES --------------------
+def modulo_analises(usuario):
+    st.title("📊 Módulo de Análises")
+    aba = st.radio("Escolha a opção:", ["Nova Análise", "Análises Finalizadas"])
+    if aba == "Nova Análise":
+        nova_analise(usuario)
+    elif aba == "Análises Finalizadas":
+        analises_finalizadas(usuario)
+
+# Chamado no menu_principal quando pagina='analises':
+if 'pagina' in st.session_state and st.session_state['pagina'] == 'analises':
+    modulo_analises(st.session_state['user'])
+# app.py - Bloco 3 de N: Módulo de Anotações do Usuário
+
+# -------------------- ANOTAÇÕES --------------------
+def nova_anotacao(usuario):
+    st.subheader("Criar Nova Anotação")
+    titulo = st.text_input("Título da anotação")
+    conteudo = st.text_area("Conteúdo da anotação", height=200)
+
+    if st.button("Salvar Anotação"):
+        data = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        cursor.execute("""
+            INSERT INTO anotacoes (usuario_id, titulo, conteudo, data)
+            VALUES (?, ?, ?, ?)
+        """, (usuario['id'], titulo, conteudo, data))
+        conn.commit()
+        st.success("Anotação salva com sucesso!")
+
+
+def visualizar_anotacoes(usuario):
+    st.subheader("Minhas Anotações")
+    df = pd.read_sql_query(
+        f"SELECT * FROM anotacoes WHERE usuario_id = {usuario['id']} ORDER BY data DESC",
+        conn
+    )
+
+    if df.empty:
+        st.info("Nenhuma anotação encontrada.")
+        return
+
+    for _, row in df.iterrows():
+        with st.expander(f"📝 {row['titulo']} — {row['data']}"):
+            st.markdown(row['conteudo'])
+            col1, col2 = st.columns([1, 1])
+            with col1:
+                if st.button("🗑️ Excluir", key=f"del_ano_{row['id']}"):
+                    cursor.execute("DELETE FROM anotacoes WHERE id = ?", (row['id'],))
+                    conn.commit()
+                    st.experimental_rerun()
+            with col2:
+                novo_conteudo = st.text_area("Editar Conteúdo", value=row['conteudo'], key=f"edit_ano_{row['id']}")
+                if st.button("💾 Salvar Edição", key=f"save_ano_{row['id']}"):
+                    cursor.execute("UPDATE anotacoes SET conteudo = ? WHERE id = ?", (novo_conteudo, row['id']))
+                    conn.commit()
+                    st.success("Anotação atualizada com sucesso!")
+                    st.experimental_rerun()
+
+# -------------------- CONTROLE DE FLUXO PARA MÓDULO ANOTAÇÕES --------------------
+def modulo_anotacoes(usuario):
+    st.title("📝 Módulo de Anotações")
+    aba = st.radio("Escolha a opção:", ["Criar Nova Anotação", "Visualizar Anotações"])
+    if aba == "Criar Nova Anotação":
+        nova_anotacao(usuario)
+    elif aba == "Visualizar Anotações":
+        visualizar_anotacoes(usuario)
+
+# Chamado no menu_principal quando pagina='anotacoes':
+if 'pagina' in st.session_state and st.session_state['pagina'] == 'anotacoes':
+    modulo_anotacoes(st.session_state['user'])
+
+# app.py - Bloco 4 de N: Módulo de Relatórios (Exportação e Impressão)
+
+# -------------------- EXPORTAÇÃO E RELATÓRIOS --------------------
+def exportar_excel_pdf(usuario):
+    st.subheader("📊 Exportação de Relatórios")
+
+    df = pd.read_sql_query(
+        f"SELECT * FROM analises WHERE usuario_id = {usuario['id']} ORDER BY data DESC",
+        conn
+    )
+
+    if df.empty:
+        st.info("Nenhuma análise disponível para exportação.")
+        return
+
+    st.markdown("### Visualização das Análises")
+    st.dataframe(df)
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.markdown("#### Exportar para Excel")
+        buffer_xlsx = io.BytesIO()
+        df.to_excel(buffer_xlsx, index=False, sheet_name='Analises')
+        st.download_button(
+            label="📥 Baixar Excel",
+            data=buffer_xlsx.getvalue(),
+            file_name="analises_triplicata.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+
+    with col2:
+        st.markdown("#### Exportar para PDF")
+        pdf = FPDF()
+        pdf.add_page()
+        pdf.set_font("Arial", size=10)
+        for _, row in df.iterrows():
+            pdf.cell(190, 10, txt=f"Amostra: {row['nome_amostra']} - {row['parametro']} ({row['data']})", ln=True)
+            pdf.cell(190, 10, txt=f"Valores: {row['valor1']}, {row['valor2']}, {row['valor3']} | Média: {row['media']} | DP: {row['desvio_padrao']} | CV: {row['coef_var']}%", ln=True)
+            pdf.ln(4)
+        buffer_pdf = io.BytesIO()
+        pdf.output(buffer_pdf)
+        st.download_button(
+            label="📄 Baixar PDF",
+            data=buffer_pdf.getvalue(),
+            file_name="relatorio_triplicata.pdf",
+            mime="application/pdf"
+        )
+
+# -------------------- MÓDULO DE RELATÓRIOS --------------------
+def modulo_relatorios(usuario):
+    st.title("📄 Módulo de Relatórios")
+    aba = st.radio("Escolha a opção:", ["Exportar e Imprimir Resultados"])
+    if aba == "Exportar e Imprimir Resultados":
+        exportar_excel_pdf(usuario)
+
+# Chamado no menu_principal quando pagina='relatorios':
+if 'pagina' in st.session_state and st.session_state['pagina'] == 'relatorios':
+    modulo_relatorios(st.session_state['user'])
