@@ -1,5 +1,3 @@
-# app.py - Bloco 1 de N: Banco, Autenticação e Sessão Inicial
-
 import streamlit as st
 import sqlite3
 import bcrypt
@@ -8,7 +6,6 @@ import pandas as pd
 import io
 from fpdf import FPDF
 
-# -------------------- BANCO DE DADOS --------------------
 conn = sqlite3.connect('banco.db', check_same_thread=False)
 cursor = conn.cursor()
 
@@ -48,7 +45,6 @@ CREATE TABLE IF NOT EXISTS anotacoes (
 )''')
 conn.commit()
 
-# -------------------- AUTENTICAÇÃO --------------------
 def hash_senha(senha):
     return bcrypt.hashpw(senha.encode('utf-8'), bcrypt.gensalt())
 
@@ -72,7 +68,6 @@ def autenticar(email, senha):
         return {'id': dados[0], 'nome': dados[1], 'tipo': dados[3]}
     return None
 
-# -------------------- TELAS DE LOGIN E CADASTRO --------------------
 def tela_login():
     st.subheader("Login")
     email = st.text_input("Email")
@@ -86,45 +81,34 @@ def tela_login():
             st.error("Email ou senha incorretos.")
 
 def tela_cadastro():
-    st.subheader("Cadastro de Usuário")
+    st.subheader("Cadastro")
     nome = st.text_input("Nome completo")
     email = st.text_input("Email")
     senha = st.text_input("Senha", type="password")
     if st.button("Cadastrar"):
         if cadastrar_usuario(nome, email, senha):
-            st.success("Cadastro realizado com sucesso. Faça login.")
+            st.success("Cadastro realizado. Faça login.")
         else:
             st.error("Email já cadastrado.")
 
-# -------------------- MENU PRINCIPAL --------------------
+st.set_page_config("Análise Centesimal", layout="centered")
+# -------------------- MENU INICIAL COM BOTÕES --------------------
+
 def menu_inicial():
-    st.title("Análises centesimais")
-    st.image("/mnt/data/532de271-3a2a-4ddf-a4cb-2ea3b77fadfc.png", use_column_width=True)
+    st.title("🔬 Painel Centesimal")
     col1, col2, col3 = st.columns(3)
     with col1:
-        if st.button("🔬 Análises"):
+        if st.button("📊 Análises"):
             st.session_state['pagina'] = 'analises'
     with col2:
         if st.button("📝 Anotações"):
             st.session_state['pagina'] = 'anotacoes'
     with col3:
-        if st.button("📊 Relatórios"):
+        if st.button("📄 Relatórios"):
             st.session_state['pagina'] = 'relatorios'
 
-# -------------------- EXECUÇÃO PRINCIPAL --------------------
-st.set_page_config("Análise Centesimal", layout="centered")
+# -------------------- NOVA ANÁLISE --------------------
 
-if 'user' not in st.session_state:
-    menu = st.sidebar.radio("Acesso", ["Login", "Cadastro"])
-    if menu == "Login":
-        tela_login()
-    else:
-        tela_cadastro()
-elif 'pagina' not in st.session_state:
-    menu_inicial()
-# app.py - Bloco 2 de N: Nova Análise em Triplicata + Visualização de Resultados
-
-# -------------------- NOVA ANÁLISE EM TRIPLICATA --------------------
 def nova_analise(usuario):
     st.subheader("Cadastrar Nova Análise")
     nome_amostra = st.text_input("Nome da Amostra")
@@ -143,21 +127,19 @@ def nova_analise(usuario):
         media = round(sum(valores) / 3, 2)
         desvio = round(pd.Series(valores).std(ddof=1), 2)
         cv = round((desvio / media) * 100 if media != 0 else 0, 2)
-
         data = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         cursor.execute("""
             INSERT INTO analises (
                 usuario_id, nome_amostra, parametro, valor1, valor2, valor3,
                 media, desvio_padrao, coef_var, data
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (
-            usuario['id'], nome_amostra, parametro,
-            valor1, valor2, valor3, media, desvio, cv, data
-        ))
+        """, (usuario['id'], nome_amostra, parametro,
+              valor1, valor2, valor3, media, desvio, cv, data))
         conn.commit()
-        st.success(f"Análise de {parametro} registrada com sucesso. Média: {media}%, DP: {desvio}, CV: {cv}%")
+        st.success(f"Análise de {parametro} registrada! Média: {media}%, DP: {desvio}, CV: {cv}%")
 
-# -------------------- VISUALIZAR ANÁLISES FINALIZADAS --------------------
+# -------------------- ANALISES FINALIZADAS --------------------
+
 def analises_finalizadas(usuario):
     st.subheader("Análises Finalizadas")
     df = pd.read_sql_query(
@@ -174,7 +156,6 @@ def analises_finalizadas(usuario):
 
     st.dataframe(df[['nome_amostra', 'parametro', 'valor1', 'valor2', 'valor3', 'media', 'desvio_padrao', 'coef_var', 'data']])
 
-# -------------------- CONTROLE DE FLUXO PARA MÓDULO ANÁLISES --------------------
 def modulo_analises(usuario):
     st.title("📊 Módulo de Análises")
     aba = st.radio("Escolha a opção:", ["Nova Análise", "Análises Finalizadas"])
@@ -183,12 +164,10 @@ def modulo_analises(usuario):
     elif aba == "Análises Finalizadas":
         analises_finalizadas(usuario)
 
-# Chamado no menu_principal quando pagina='analises':
 if 'pagina' in st.session_state and st.session_state['pagina'] == 'analises':
     modulo_analises(st.session_state['user'])
-# app.py - Bloco 3 de N: Módulo de Anotações do Usuário
+# -------------------- NOVA ANOTAÇÃO --------------------
 
-# -------------------- ANOTAÇÕES --------------------
 def nova_anotacao(usuario):
     st.subheader("Criar Nova Anotação")
     titulo = st.text_input("Título da anotação")
@@ -203,6 +182,7 @@ def nova_anotacao(usuario):
         conn.commit()
         st.success("Anotação salva com sucesso!")
 
+# -------------------- LISTAR E EDITAR ANOTAÇÕES --------------------
 
 def visualizar_anotacoes(usuario):
     st.subheader("Minhas Anotações")
@@ -232,7 +212,8 @@ def visualizar_anotacoes(usuario):
                     st.success("Anotação atualizada com sucesso!")
                     st.experimental_rerun()
 
-# -------------------- CONTROLE DE FLUXO PARA MÓDULO ANOTAÇÕES --------------------
+# -------------------- MÓDULO DE ANOTAÇÕES --------------------
+
 def modulo_anotacoes(usuario):
     st.title("📝 Módulo de Anotações")
     aba = st.radio("Escolha a opção:", ["Criar Nova Anotação", "Visualizar Anotações"])
@@ -241,13 +222,10 @@ def modulo_anotacoes(usuario):
     elif aba == "Visualizar Anotações":
         visualizar_anotacoes(usuario)
 
-# Chamado no menu_principal quando pagina='anotacoes':
 if 'pagina' in st.session_state and st.session_state['pagina'] == 'anotacoes':
     modulo_anotacoes(st.session_state['user'])
-
-# app.py - Bloco 4 de N: Módulo de Relatórios (Exportação e Impressão)
-
 # -------------------- EXPORTAÇÃO E RELATÓRIOS --------------------
+
 def exportar_excel_pdf(usuario):
     st.subheader("📊 Exportação de Relatórios")
 
@@ -295,12 +273,35 @@ def exportar_excel_pdf(usuario):
         )
 
 # -------------------- MÓDULO DE RELATÓRIOS --------------------
+
 def modulo_relatorios(usuario):
     st.title("📄 Módulo de Relatórios")
     aba = st.radio("Escolha a opção:", ["Exportar e Imprimir Resultados"])
     if aba == "Exportar e Imprimir Resultados":
         exportar_excel_pdf(usuario)
 
-# Chamado no menu_principal quando pagina='relatorios':
 if 'pagina' in st.session_state and st.session_state['pagina'] == 'relatorios':
     modulo_relatorios(st.session_state['user'])
+# -------------------- CONTROLE FINAL DE SESSÃO E FLUXO --------------------
+
+def menu_principal():
+    user = st.session_state['user']
+    menu_inicial()
+
+    st.sidebar.markdown(f"👤 **Usuário:** {user['nome']}")
+    if st.sidebar.button("🚪 Logout"):
+        del st.session_state['user']
+        if 'pagina' in st.session_state:
+            del st.session_state['pagina']
+        st.rerun()
+
+# -------------------- EXECUÇÃO PRINCIPAL --------------------
+
+if 'user' not in st.session_state:
+    menu = st.sidebar.radio("Acesso", ["Login", "Cadastro"])
+    if menu == "Login":
+        tela_login()
+    else:
+        tela_cadastro()
+else:
+    menu_principal()
