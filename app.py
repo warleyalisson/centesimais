@@ -172,8 +172,7 @@ def nova_analise_umidade(usuario):
             peso_seca = apos_secagem - cadinho
             umidade = round((peso_umida - peso_seca) / peso_umida * 100, 2) if peso_umida else 0
             dados.append(umidade)
-        if valores['peso_amostra_umida'] != 0:
-    umidade = ((valores['peso_amostra_umida'] - peso_seco) / valores['peso_amostra_umida']) * 100
+
         else:
             coleta_completa = False
 
