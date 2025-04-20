@@ -107,10 +107,14 @@ st.set_page_config("Análise Centesimal", layout="centered")
 # --------------------- MENU PRINCIPAL COM BOTÕES ---------------------
 
 def menu_inicial():
-    st.title("🔬 Painel Centesimal")
+    st.title("Análises centesimais")
+    try:
+        st.image("logo.png", use_container_width=True)  # imagem local no repositório
+    except:
+        st.warning("⚠️ Logo não encontrada.")
     col1, col2, col3 = st.columns(3)
     with col1:
-        if st.button("📊 Análises"):
+        if st.button("🔬 Análises"):
             st.session_state['pagina'] = 'analises'
     with col2:
         if st.button("📝 Anotações"):
