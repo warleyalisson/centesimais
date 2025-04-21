@@ -87,9 +87,9 @@ def cadastrar_usuario():
 
 def login():
     st.subheader("🔐 Login")
-    email = st.text_input("Email")
-    senha = st.text_input("Senha", type="password")
-    if st.button("Entrar"):
+    email = st.text_input("Email", key="login_email")
+    senha = st.text_input("Senha", type="password", key="login_senha")
+    if st.button("Entrar", key="login_botao"):
         cursor.execute("SELECT * FROM usuarios WHERE email = ?", (email,))
         user = cursor.fetchone()
         if user and verificar_senha(senha, user[3]):
