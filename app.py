@@ -52,7 +52,7 @@ CREATE TABLE IF NOT EXISTS anotacoes (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     usuario_id INTEGER,
     titulo TEXT,
-    conteudo TEXT,
+    texto TEXT,
     data TEXT,
     FOREIGN KEY(usuario_id) REFERENCES usuarios(id)
 )
