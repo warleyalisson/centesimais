@@ -762,7 +762,4 @@ def pagina_nao_encontrada():
         st.session_state['pagina'] = 'login'
         st.experimental_rerun()
 
-# Fallback para páginas não mapeadas
-else:
-    pagina_nao_encontrada()
 # ---------------------- FIM DO SISTEMA ----------------------
