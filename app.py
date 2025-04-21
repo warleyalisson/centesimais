@@ -723,4 +723,4 @@ def painel_admin():
     resumo = df.groupby("parametro")["media"].agg(['count', 'mean', 'std']).reset_index()
     resumo.columns = ["Análise", "Total", "Média Geral", "Desvio Padrão"]
     st.dataframe(resumo, use_container_width=True)
-
+ 
