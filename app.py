@@ -10,8 +10,6 @@ from fpdf import FPDF
 from io import BytesIO
 from openpyxl import Workbook
 
-
-st.set_page_config(page_title="Sistema de Análises Centesimais", layout="wide")
 # Configurações iniciais da página
 st.set_page_config(
     page_title="Sistema de Análises Centesimais",
@@ -266,7 +264,8 @@ def menu_admin(usuario):
 # ---------------------- BLOCO 10: EXECUÇÃO PRINCIPAL DO SISTEMA ----------------------
 
 if __name__ == "__main__":
-        tela_autenticacao()
+    st.set_page_config(page_title="Sistema de Análises Centesimais", layout="wide")
+    tela_autenticacao()
 
 # ---------------------- BLOCO 11: ANÁLISE DE UMIDADE ----------------------
 def analise_umidade(usuario):
@@ -723,12 +722,6 @@ def painel_admin():
     resumo = df.groupby("parametro")["media"].agg(['count', 'mean', 'std']).reset_index()
     resumo.columns = ["Análise", "Total", "Média Geral", "Desvio Padrão"]
     st.dataframe(resumo, use_container_width=True)
-
-
-
-
-
-
 
 
 
