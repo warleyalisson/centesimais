@@ -743,7 +743,4 @@ def pagina_nao_encontrada():
         st.session_state['pagina'] = 'login'
         st.experimental_rerun()
 
-# ---------------------- EXECUÇÃO ----------------------
-if __name__ == "__main__":
-    tela_autenticacao()
     # ---------------------- FIM DO SISTEMA ----------------------
