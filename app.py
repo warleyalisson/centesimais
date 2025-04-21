@@ -143,6 +143,10 @@ def tela_autenticacao():
             elif menu == "Relatórios":
                 modulo_relatorios(usuario)
 
+# ---------------------- EXECUÇÃO ----------------------
+if __name__ == "__main__":
+    tela_autenticacao()
+    
 # ---------------------- BLOCO 6: MENU PRINCIPAL E DIRECIONAMENTO ----------------------
 def menu_usuario():
     st.sidebar.title("Menu")
