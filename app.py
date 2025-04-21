@@ -68,44 +68,48 @@ def verificar_senha(senha, senha_hash):
     return bcrypt.checkpw(senha.encode('utf-8'), senha_hash)
 
 # ---------------------- BLOCO 5: SESSÃO DE LOGIN E CADASTRO ----------------------
-
 def cadastrar_usuario():
-    st.subheader("📋 Cadastro de Usuário")
-    nome = st.text_input("Nome completo", key="cadastro_nome")
-    email = st.text_input("Email", key="cadastro_email")
-    senha = st.text_input("Senha", type="password", key="cadastro_senha")
-    tipo = st.selectbox("Tipo de usuário", ["usuario", "admin"], key="cadastro_tipo")
+    with st.form("form_cadastro_usuario"):
+        st.subheader("📋 Cadastro de Usuário")
+        nome = st.text_input("Nome completo", key="cadastro_nome")
+        email = st.text_input("Email", key="cadastro_email")
+        senha = st.text_input("Senha", type="password", key="cadastro_senha")
+        tipo = st.selectbox("Tipo de usuário", ["usuario", "admin"], key="cadastro_tipo")
 
-    if st.button("Cadastrar", key="cadastro_botao"):
-        senha_hash = criptografar_senha(senha)
-        try:
-            cursor.execute("INSERT INTO usuarios (nome, email, senha, tipo) VALUES (?, ?, ?, ?)",
-                           (nome, email, senha_hash, tipo))
-            conn.commit()
-            st.success("Usuário cadastrado com sucesso!")
-        except sqlite3.IntegrityError:
-            st.error("Email já cadastrado.")
+        if st.form_submit_button("Cadastrar"):
+            if not nome or not email or not senha:
+                st.warning("Por favor, preencha todos os campos.")
+                return
+
+            senha_hash = criptografar_senha(senha)
+            try:
+                cursor.execute("INSERT INTO usuarios (nome, email, senha, tipo) VALUES (?, ?, ?, ?)",
+                               (nome, email, senha_hash, tipo))
+                conn.commit()
+                st.success("Usuário cadastrado com sucesso!")
+            except sqlite3.IntegrityError:
+                st.error("Email já cadastrado.")
 
 def login():
-    st.subheader("🔐 Login")
-    email = st.text_input("Email", key="login_email_login")
-    senha = st.text_input("Senha", type="password", key="login_senha_login")
-    if st.button("Entrar", key="login_botao_login"):
-        cursor.execute("SELECT * FROM usuarios WHERE email = ?", (email,))
-        user = cursor.fetchone()
-        if user and verificar_senha(senha, user[3]):
-            st.session_state['user'] = {
-                'id': user[0],
-                'nome': user[1],
-                'email': user[2],
-                'tipo': user[4]
-            }
-            st.success("Login realizado com sucesso!")
-            st.session_state['pagina'] = 'analise'
-            st.experimental_rerun()
-        else:
-            st.error("Email ou senha incorretos.")
-            
+    with st.form("form_login_usuario"):
+        st.subheader("🔐 Login")
+        email = st.text_input("Email", key="login_email")
+        senha = st.text_input("Senha", type="password", key="login_senha")
+
+        if st.form_submit_button("Entrar"):
+            cursor.execute("SELECT * FROM usuarios WHERE email = ?", (email,))
+            user = cursor.fetchone()
+            if user and verificar_senha(senha, user[3]):
+                st.session_state['user'] = {
+                    'id': user[0],
+                    'nome': user[1],
+                    'email': user[2],
+                    'tipo': user[4]
+                }
+                st.success("Login realizado com sucesso!")
+                st.rerun()
+            else:
+                st.error("Email ou senha incorretos.")
 # ---------------------- BLOCO 6: MENU PRINCIPAL E DIRECIONAMENTO ----------------------
 def menu_usuario():
     st.sidebar.title("Menu")
@@ -720,30 +724,35 @@ def nova_metodologia_padrao(nome_parametro, campos, usuario_id):
             st.error(f"Erro ao registrar a metodologia: {e}")
 
 # ---------------------- BLOCO 16: INICIALIZAÇÃO GERAL E ROTEAMENTO ----------------------
-
 def tela_login():
-    st.title("Sistema de Análises Centesimais")
-    login()
+    st.title("🔬 Sistema de Análises Centesimais")
+    opcoes = st.radio("Escolha uma opção:", ["Entrar", "Cadastrar"], key="tela_login_opcao")
 
-def tela_cadastro():
-    st.title("Cadastro de Novo Usuário")
-    cadastrar_usuario()
+    if opcoes == "Entrar":
+        login()
+    elif opcoes == "Cadastrar":
+        cadastrar_usuario()
 
 if 'pagina' not in st.session_state:
     st.session_state['pagina'] = 'login'
 
-if st.session_state['pagina'] == 'login':
+if 'user' not in st.session_state:
     tela_login()
-elif st.session_state['pagina'] == 'cadastro':
-    tela_cadastro()
-elif st.session_state['pagina'] == 'analise':
-    menu_analises(st.session_state['user'])
-elif st.session_state['pagina'] == 'relatorios':
-    modulo_relatorios(st.session_state['user'])
-elif st.session_state['pagina'] == 'anotacoes':
-    modulo_anotacoes(st.session_state['user'])
-elif st.session_state['pagina'] == 'admin':
-    painel_admin()
+else:
+    usuario = st.session_state['user']
+    if usuario['tipo'] == 'admin':
+        painel_admin()
+    else:
+        menu = menu_usuario()
+        if menu == "Nova Análise":
+            nova_analise(usuario)
+        elif menu == "Análises Finalizadas":
+            analises_finalizadas(usuario)
+        elif menu == "Anotações":
+            modulo_anotacoes(usuario)
+        elif menu == "Relatórios":
+            modulo_relatorios(usuario)
+
 # ---------------------- BLOCO 17: FINALIZAÇÃO E CONTROLE GERAL ----------------------
 
 def pagina_nao_encontrada():
