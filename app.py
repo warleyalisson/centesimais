@@ -1,6 +1,13 @@
 # ---------------------- BLOCO 1: IMPORTAÇÕES E CONFIGURAÇÕES INICIAIS ----------------------
 import streamlit as st
-st.set_page_config(page_title="Sistema de Análises Centesimais", layout="wide")
+
+# Esta linha deve vir logo após o import acima, sem indentação
+st.set_page_config(
+    page_title="Sistema de Análises Centesimais",
+    layout="wide"
+)
+
+# Demais imports e código abaixo
 import sqlite3
 import pandas as pd
 import numpy as np
@@ -10,11 +17,6 @@ import bcrypt
 from fpdf import FPDF
 from io import BytesIO
 from openpyxl import Workbook
-
-# Configurações iniciais da página
-    page_title = "Sistema de Análises Centesimais",
-    layout = "wide"
-
 
 # ---------------------- BLOCO 2: CONEXÃO COM BANCO DE DADOS E CRIAÇÃO DAS TABELAS ----------------------
 DB_PATH = "banco.db"
