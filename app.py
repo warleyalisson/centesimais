@@ -12,8 +12,8 @@ from io import BytesIO
 from openpyxl import Workbook
 
 # Configurações iniciais da página
-    page_title="Sistema de Análises Centesimais",
-    layout="wide"
+    page_title = "Sistema de Análises Centesimais",
+    layout = "wide"
 
 
 # ---------------------- BLOCO 2: CONEXÃO COM BANCO DE DADOS E CRIAÇÃO DAS TABELAS ----------------------
