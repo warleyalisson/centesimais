@@ -88,17 +88,24 @@ def cadastrar_usuario():
 
 def login():
     st.subheader("🔐 Login")
-    email = st.text_input("Email", key="login_email_input")
-    senha = st.text_input("Senha", type="password", key="login_senha_input")
-    if st.button("Entrar", key="login_botao_exec"):
+    email = st.text_input("Email", key="login_email_login")
+    senha = st.text_input("Senha", type="password", key="login_senha_login")
+    if st.button("Entrar", key="login_botao_login"):
         cursor.execute("SELECT * FROM usuarios WHERE email = ?", (email,))
         user = cursor.fetchone()
         if user and verificar_senha(senha, user[3]):
-            st.session_state['user'] = {'id': user[0], 'nome': user[1], 'email': user[2], 'tipo': user[4]}
+            st.session_state['user'] = {
+                'id': user[0],
+                'nome': user[1],
+                'email': user[2],
+                'tipo': user[4]
+            }
             st.success("Login realizado com sucesso!")
+            st.session_state['pagina'] = 'analise'
+            st.experimental_rerun()
         else:
             st.error("Email ou senha incorretos.")
-
+            
 # ---------------------- BLOCO 6: MENU PRINCIPAL E DIRECIONAMENTO ----------------------
 def menu_usuario():
     st.sidebar.title("Menu")
