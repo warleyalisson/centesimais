@@ -265,7 +265,7 @@ def menu_admin(usuario):
         modulo_relatorios(usuario)
 # ---------------------- BLOCO 10: EXECUÇÃO PRINCIPAL DO SISTEMA ----------------------
 
-#if __name__ == "__main__":
+if __name__ == "__main__":
  #   tela_autenticacao()
 
 # ---------------------- BLOCO 11: ANÁLISE DE UMIDADE ----------------------
