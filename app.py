@@ -753,4 +753,16 @@ elif st.session_state['pagina'] == 'sair':
     del st.session_state['user']
     st.session_state['pagina'] = 'login'
     st.experimental_rerun()
+
+# ---------------------- BLOCO 17: FINALIZAÇÃO E CONTROLE GERAL ----------------------
+
+def pagina_nao_encontrada():
+    st.error("Página não encontrada. Por favor, volte ao menu principal.")
+    if st.button("🔙 Voltar ao início"):
+        st.session_state['pagina'] = 'login'
+        st.experimental_rerun()
+
+# Fallback para páginas não mapeadas
+else:
+    pagina_nao_encontrada()
 # ---------------------- FIM DO SISTEMA ----------------------
