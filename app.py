@@ -141,7 +141,6 @@ def tela_autenticacao():
             menu_analises(usuario)
 
 # ---------------------- BLOCO 6: INTERFACE PRINCIPAL DE ANÁLISES ----------------------
-
 def menu_analises(usuario):
     st.sidebar.header("🔬 Menu de Análises")
     opcao = st.sidebar.selectbox("Escolha o tipo de análise:", (
