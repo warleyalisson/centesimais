@@ -67,58 +67,81 @@ def criptografar_senha(senha):
 def verificar_senha(senha, senha_hash):
     return bcrypt.checkpw(senha.encode('utf-8'), senha_hash)
 
-# ---------------------- BLOCO 5 + 16: TELA DE LOGIN, CADASTRO E ROTEAMENTO ----------------------
-
+# ---------------------- BLOCO 5: AUTENTICAÇÃO (LOGIN E CADASTRO) + CONTROLE DE SESSÃO ----------------------
 def tela_autenticacao():
-    st.title("🔒 Sistema de Análises Centesimais")
-
-    if 'pagina' not in st.session_state:
-        st.session_state['pagina'] = 'login'
-
     if 'user' not in st.session_state:
-        modo = st.radio("Você deseja:", ["Login", "Cadastro"], key="auth_modo")
+        st.title("🔒 Sistema de Análises Centesimais")
+        aba = st.radio("Escolha uma opção:", ["Login", "Cadastrar"], key="aba_autenticacao")
 
-        if modo == "Login":
+        if aba == "Login":
+            st.subheader("🔐 Login")
             with st.form("form_login"):
-                email = st.text_input("Email", key="login_email")
-                senha = st.text_input("Senha", type="password", key="login_senha")
-                submit = st.form_submit_button("Entrar")
-                if submit:
+                email = st.text_input("Email", key="login_email_input")
+                senha = st.text_input("Senha", type="password", key="login_senha_input")
+                submit_login = st.form_submit_button("Entrar")
+                if submit_login:
                     cursor.execute("SELECT * FROM usuarios WHERE email = ?", (email,))
                     user = cursor.fetchone()
                     if user and verificar_senha(senha, user[3]):
                         st.session_state['user'] = {
-                            'id': user[0], 'nome': user[1], 'email': user[2], 'tipo': user[4]
+                            'id': user[0],
+                            'nome': user[1],
+                            'email': user[2],
+                            'tipo': user[4]
                         }
                         st.success("Login realizado com sucesso!")
-                        st.rerun()
+                        st.experimental_rerun()
                     else:
                         st.error("Email ou senha incorretos.")
 
-        elif modo == "Cadastro":
+        elif aba == "Cadastrar":
+            st.subheader("📝 Cadastro de Novo Usuário")
             with st.form("form_cadastro"):
-                nome = st.text_input("Nome completo", key="cad_nome")
-                email = st.text_input("Email", key="cad_email")
-                senha = st.text_input("Senha", type="password", key="cad_senha")
-                tipo = st.selectbox("Tipo de usuário", ["usuario", "admin"], key="cad_tipo")
-                submit = st.form_submit_button("Cadastrar")
-                if submit:
-                    if nome and email and senha:
-                        senha_hash = criptografar_senha(senha)
-                        try:
-                            cursor.execute("INSERT INTO usuarios (nome, email, senha, tipo) VALUES (?, ?, ?, ?)",
-                                           (nome, email, senha_hash, tipo))
-                            conn.commit()
-                            st.success("Usuário cadastrado com sucesso! Faça login para continuar.")
-                            st.session_state['pagina'] = 'login'
-                            st.rerun()
-                        except sqlite3.IntegrityError:
-                            st.error("Email já cadastrado.")
-                    else:
-                        st.warning("Por favor, preencha todos os campos.")
+                nome = st.text_input("Nome completo", key="cad_nome_input")
+                email = st.text_input("Email", key="cad_email_input")
+                senha = st.text_input("Senha", type="password", key="cad_senha_input")
+                tipo = st.selectbox("Tipo de usuário", ["usuario", "admin"], key="cad_tipo_input")
+                submit_cadastro = st.form_submit_button("Cadastrar")
+                if submit_cadastro:
+                    senha_hash = criptografar_senha(senha)
+                    try:
+                        cursor.execute("""
+                            INSERT INTO usuarios (nome, email, senha, tipo)
+                            VALUES (?, ?, ?, ?)
+                        """, (nome, email, senha_hash, tipo))
+                        conn.commit()
+                        st.success("Usuário cadastrado com sucesso!")
+                        st.experimental_rerun()
+                    except sqlite3.IntegrityError:
+                        st.error("Erro: Este email já está cadastrado.")
     else:
-        # Redirecionamento após login
-        carregar_interface()
+        usuario = st.session_state['user']
+        st.sidebar.write(f"👤 Logado como: {usuario['nome']} ({usuario['tipo']})")
+        if st.sidebar.button("Sair"):
+            del st.session_state['user']
+            st.experimental_rerun()
+
+        # Redirecionamento de acordo com o tipo de usuário
+        if usuario['tipo'] == 'admin':
+            menu = menu_usuario()
+            if menu == "Nova Análise":
+                nova_analise(usuario, admin=True)
+            elif menu == "Análises Finalizadas":
+                analises_finalizadas(usuario, admin=True)
+            elif menu == "Anotações":
+                modulo_anotacoes(usuario)
+            elif menu == "Relatórios":
+                modulo_relatorios(usuario)
+        else:
+            menu = menu_usuario()
+            if menu == "Nova Análise":
+                nova_analise(usuario)
+            elif menu == "Análises Finalizadas":
+                analises_finalizadas(usuario)
+            elif menu == "Anotações":
+                modulo_anotacoes(usuario)
+            elif menu == "Relatórios":
+                modulo_relatorios(usuario)
 
 # ---------------------- BLOCO 6: MENU PRINCIPAL E DIRECIONAMENTO ----------------------
 def menu_usuario():
