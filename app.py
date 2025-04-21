@@ -10,6 +10,8 @@ from fpdf import FPDF
 from io import BytesIO
 from openpyxl import Workbook
 
+
+st.set_page_config(page_title="Sistema de Análises Centesimais", layout="wide")
 # Configurações iniciais da página
 st.set_page_config(
     page_title="Sistema de Análises Centesimais",
@@ -141,6 +143,7 @@ def tela_autenticacao():
             menu_analises(usuario)
 
 # ---------------------- BLOCO 6: INTERFACE PRINCIPAL DE ANÁLISES ----------------------
+
 def menu_analises(usuario):
     st.sidebar.header("🔬 Menu de Análises")
     opcao = st.sidebar.selectbox("Escolha o tipo de análise:", (
@@ -263,8 +266,7 @@ def menu_admin(usuario):
 # ---------------------- BLOCO 10: EXECUÇÃO PRINCIPAL DO SISTEMA ----------------------
 
 if __name__ == "__main__":
-    st.set_page_config(page_title="Sistema de Análises Centesimais", layout="wide")
-    tela_autenticacao()
+        tela_autenticacao()
 
 # ---------------------- BLOCO 11: ANÁLISE DE UMIDADE ----------------------
 def analise_umidade(usuario):
