@@ -185,16 +185,7 @@ def carregar_interface():
             elif menu == "Relatórios":
                 modulo_relatorios(usuario)
 
-# ---------------------- BLOCO 8: EXECUÇÃO INICIAL ----------------------
-if __name__ == '__main__':
-    if 'user' not in st.session_state:
-        tela = st.selectbox("Você deseja:", ["Entrar", "Cadastrar"])
-        if tela == "Entrar":
-            login()
-        else:
-            cadastrar_usuario()
-    else:
-        carregar_interface()
+
 
 # ---------------------- BLOCO 9: NOVA ANÁLISE - UMIDADE (DADOS BRUTOS + CÁLCULO) ----------------------
 def nova_analise(usuario, admin=False):
