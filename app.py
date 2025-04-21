@@ -265,8 +265,8 @@ def menu_admin(usuario):
         modulo_relatorios(usuario)
 # ---------------------- BLOCO 10: EXECUÇÃO PRINCIPAL DO SISTEMA ----------------------
 
-if __name__ == "__main__":
-    tela_autenticacao()
+#if __name__ == "__main__":
+ #   tela_autenticacao()
 
 # ---------------------- BLOCO 11: ANÁLISE DE UMIDADE ----------------------
 def analise_umidade(usuario):
