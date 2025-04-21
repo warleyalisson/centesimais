@@ -67,7 +67,13 @@ def criptografar_senha(senha):
 def verificar_senha(senha, senha_hash):
     return bcrypt.checkpw(senha.encode('utf-8'), senha_hash)
 
-# ---------------------- BLOCO 5: AUTENTICAÇÃO (LOGIN E CADASTRO) + CONTROLE DE SESSÃO ----------------------
+
+# ---------------------- BLOCO 5: MENU PRINCIPAL E DIRECIONAMENTO ----------------------
+def menu_usuario():
+    st.sidebar.title("Menu")
+    opcao = st.sidebar.radio("Escolha uma opção:", ["Nova Análise", "Análises Finalizadas", "Anotações", "Relatórios"])
+    return opcao
+# ---------------------- BLOCO 6: AUTENTICAÇÃO (LOGIN E CADASTRO) + CONTROLE DE SESSÃO ----------------------
 def tela_autenticacao():
     if 'user' not in st.session_state:
         st.title("🔒 Sistema de Análises Centesimais")
@@ -147,12 +153,6 @@ def tela_autenticacao():
 if __name__ == "__main__":
     tela_autenticacao()
     
-# ---------------------- BLOCO 6: MENU PRINCIPAL E DIRECIONAMENTO ----------------------
-def menu_usuario():
-    st.sidebar.title("Menu")
-    opcao = st.sidebar.radio("Escolha uma opção:", ["Nova Análise", "Análises Finalizadas", "Anotações", "Relatórios"])
-    return opcao
-
 # ---------------------- BLOCO 7: REDIRECIONAMENTO POR TIPO DE USUÁRIO ----------------------
 def carregar_interface():
     if 'user' not in st.session_state:
